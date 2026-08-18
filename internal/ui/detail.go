@@ -464,6 +464,24 @@ func (m DetailModel) maxScrollOffset() int {
 	return max
 }
 
+// clampScroll keeps scrollOffset within [0, maxScrollOffset()]. The scroll
+// key handlers clamp per-keystroke against the CURRENT geometry, but a
+// previously-valid offset goes stale whenever contentHeight changes (a
+// resize or a panel-3 zoom grows the body, shrinking maxScrollOffset) or
+// the content length changes (wrap reflow, the log ring-buffer trimming
+// its front, a watcher refresh). Left unclamped, the render slice starts
+// past the last screenful and the body draws blank. Call this after any
+// such change; snap-to-bottom (followTail) paths already set the ceiling
+// so a follow-up clamp is a harmless no-op.
+func (m *DetailModel) clampScroll() {
+	if max := m.maxScrollOffset(); m.scrollOffset > max {
+		m.scrollOffset = max
+	}
+	if m.scrollOffset < 0 {
+		m.scrollOffset = 0
+	}
+}
+
 // contentHeight returns the number of lines available for content.
 func (m DetailModel) contentHeight() int {
 	if m.height < 0 {
@@ -578,15 +596,30 @@ func (m DetailModel) activeTabEmptyMessage() string {
 // what makes panel expand (= / -) feel correct.
 func (m *DetailModel) SetSize(width, height int) {
 	widthChanged := width != m.width
+	heightChanged := height != m.height
 	m.width = width
 	m.height = height
-	if widthChanged && m.hasData {
+	if !m.hasData {
+		return
+	}
+	if widthChanged {
+		// Wrap points are width-based — reflow so long lines re-break.
 		m.buildContentLines()
+	}
+	// A width change reflows contentLines (length shifts); a height change
+	// (e.g. zooming panel 3 to near full-screen) changes contentHeight and
+	// thus maxScrollOffset. Either way a scrolled-up offset can end up past
+	// the last screenful and render blank — height changes used to be
+	// ignored here entirely. Following tabs snap to the fresh bottom;
+	// otherwise clamp the offset back into range.
+	if widthChanged || heightChanged {
 		switch {
 		case m.ActiveTabName() == "Logs" && m.followTail:
 			m.scrollOffset = m.maxScrollOffset()
 		case m.ActiveTabName() == "Events" && m.followEventsTail:
 			m.scrollOffset = m.maxScrollOffset()
+		default:
+			m.clampScroll()
 		}
 	}
 }
@@ -723,6 +756,10 @@ func (m *DetailModel) SetDetail(detail k8s.ResourceDetail, events []k8s.EventIte
 	// subsequent watcher ticks — same contract as Logs.
 	if m.ActiveTabName() == "Events" && m.followEventsTail {
 		m.scrollOffset = m.maxScrollOffset()
+	} else {
+		// Preserved scroll (same item) can outrun a shortened body after
+		// the rebuild — clamp so a watcher refresh never lands on blank.
+		m.clampScroll()
 	}
 }
 
@@ -1148,6 +1185,11 @@ func (m *DetailModel) AppendLogLine(pod, container, text string) {
 		m.buildContentLines()
 		if m.followTail {
 			m.scrollOffset = m.maxScrollOffset()
+		} else {
+			// Paused mid-scroll: the ring buffer may have trimmed lines off
+			// the front (or a rebuild changed the wrapped count), so re-clamp
+			// rather than leave the offset pointing past the shortened body.
+			m.clampScroll()
 		}
 	}
 }

@@ -100,12 +100,22 @@ func TestDetailModel_SetDetail(t *testing.T) {
 func TestDetailModel_SetDetail_PreservesScrollOnSameUID(t *testing.T) {
 	m := newTestDetail()
 	m.SetResourceType(k8s.ResourcePods)
+	m.SetSize(80, 5) // small viewport so a modest log is scrollable
 	d := sampleDetail()
 	d.UID = "uid-A"
 	m.SetDetail(d, nil)
-	m.scrollOffset = 5 // user scrolled down
+	m = m.switchToTab(0) // Logs
+	for i := 0; i < 20; i++ {
+		m.AppendLogLine("", "nginx", fmt.Sprintf("line %d", i))
+	}
+	m.followTail = false
+	m.scrollOffset = 5 // user scrolled down — in range for 20 lines at height 5
+	if m.scrollOffset > m.maxScrollOffset() {
+		t.Fatalf("setup: offset 5 should be in range, max=%d", m.maxScrollOffset())
+	}
 
-	// Polling refresh: same UID, fresher data
+	// Polling refresh: same UID, fresher data — scroll preserved (the offset
+	// is still valid for the unchanged content, so the clamp is a no-op).
 	m.SetDetail(d, nil)
 	if m.scrollOffset != 5 {
 		t.Errorf("same-UID SetDetail must preserve scrollOffset; want 5, got %d", m.scrollOffset)
@@ -191,6 +201,76 @@ func TestDetailModel_ScrollDown(t *testing.T) {
 	m, _ = m.Update(keyMsg('j'))
 	if m.scrollOffset != 2 {
 		t.Errorf("expected scrollOffset=2 after second j, got %d", m.scrollOffset)
+	}
+}
+
+// TestDetailModel_ZoomHeightGrowthKeepsBodyFull is the regression guard for
+// the "scroll to blank" bug: growing the detail panel's height (panel-3
+// zoom) shrinks maxScrollOffset, but a paused scrollOffset used to be left
+// stale — the render slice then started past the last screenful and drew a
+// mostly-blank body. After the fix SetSize re-clamps on height changes too.
+func TestDetailModel_ZoomHeightGrowthKeepsBodyFull(t *testing.T) {
+	m := newTestDetail()
+	m.SetResourceType(k8s.ResourcePods)
+	m.SetDetail(sampleDetail(), sampleEvents())
+	m = m.switchToTab(0) // Logs
+	for i := 0; i < 50; i++ {
+		m.AppendLogLine("", "nginx", fmt.Sprintf("line %d", i))
+	}
+	// Small viewport, paused at the bottom.
+	m.SetSize(80, 10)
+	m.followTail = false
+	m.scrollOffset = m.maxScrollOffset()
+	if m.scrollOffset == 0 {
+		t.Fatal("setup: expected a non-zero max offset at height 10")
+	}
+	// Zoom: height grows to near full-screen (width unchanged).
+	m.SetSize(80, 30)
+	if m.scrollOffset > m.maxScrollOffset() {
+		t.Errorf("scrollOffset %d exceeds maxScrollOffset %d after zoom — body would blank",
+			m.scrollOffset, m.maxScrollOffset())
+	}
+	// 50 content lines ≥ 30 rows, so the body must fill the viewport
+	// completely — no blank shortfall.
+	if got := len(strings.Split(m.View(), "\n")); got != m.contentHeight() {
+		t.Errorf("expected a full %d-row body after zoom, got %d rendered rows",
+			m.contentHeight(), got)
+	}
+}
+
+// TestDetailModel_LogTrimWhilePausedNeverBlanks guards the streaming-trim
+// side of the same bug: while paused mid-scroll, the log ring buffer keeps
+// trimming tall (wrapped) lines off the front and appending short ones, so
+// the display body shrinks. An unclamped offset would soon point past the
+// shortened body and render blank.
+func TestDetailModel_LogTrimWhilePausedNeverBlanks(t *testing.T) {
+	m := newTestDetail()
+	m.SetResourceType(k8s.ResourcePods)
+	m.SetDetail(sampleDetail(), sampleEvents())
+	m = m.switchToTab(0) // Logs
+	m.SetSize(80, 5)
+	m.maxLogLines = 12
+	long := strings.Repeat("x", 200) // no spaces → hard-wraps to several rows
+	for i := 0; i < 12; i++ {
+		m.AppendLogLine("", "nginx", long)
+	}
+	// Pause scrolled to the bottom of the tall wrapped body.
+	m.followTail = false
+	m.scrollOffset = m.maxScrollOffset()
+	if m.scrollOffset == 0 {
+		t.Fatal("setup: expected a tall wrapped body with a non-zero max offset")
+	}
+	// Stream short lines: each append trims a 3-row line off the front and
+	// adds a 1-row line, so the body shrinks steadily.
+	for i := 0; i < 12; i++ {
+		m.AppendLogLine("", "nginx", "short")
+		if m.scrollOffset > m.maxScrollOffset() {
+			t.Fatalf("append %d: scrollOffset %d exceeds max %d — body would blank",
+				i, m.scrollOffset, m.maxScrollOffset())
+		}
+	}
+	if strings.TrimSpace(m.View()) == "" {
+		t.Error("detail body rendered blank after the tall body shrank under a paused scroll")
 	}
 }
 
