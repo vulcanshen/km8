@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [v2.1.2] - 2026-08-04
+
+Fix the detail panel (panel 3) scrolling to a blank body.
+
+- **Log/detail scroll no longer lands on a blank screen.** Scrolling panel
+  3 with `j`/`k`/`u`/`d` could leave the body blank — most often after
+  zooming the panel (`z`) or while streaming logs. The scroll offset was
+  re-clamped only when the panel width changed, so a taller viewport (zoom
+  grows the height) or a shrinking body (the log ring buffer trimming old
+  lines while you were scrolled up) left the offset pointing past the last
+  screenful, and the render started beyond the content. The offset is now
+  clamped on any size change and after every content rebuild, so the body
+  always draws content.
+
 ## [v2.1.1] - 2026-08-04
 
 Fix a copy-fidelity bug in the YAML popup's visual-mode yank.
