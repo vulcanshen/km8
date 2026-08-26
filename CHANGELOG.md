@@ -4,6 +4,25 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [v2.2.0] - 2026-08-26
+
+Browse your kubeconfig contexts from inside kbu — a new read-only view.
+
+- **KubeConfig ▸ Contexts.** A new "KubeConfig" category leads the sidebar
+  (panel 1) with a read-only Contexts view. It lists every context in your
+  kubeconfig — Name, Cluster, User, Namespace, Server — with the context
+  you're currently connected to marked by a trailing `*`. Panel 3 shows an
+  Info tab (Context / Cluster / Server / TLS / User / Auth / Namespace), and
+  `Y` opens a kubeconfig-shaped YAML view. It reads the kubeconfig directly,
+  so it works even when the cluster is unreachable.
+- **Read-only by design.** No edit / delete — the `E` / `d` hotkeys, the
+  Space menu, and the YAML popup's own edit are all gated off, and Enter is
+  inert. Switching context stays on the `C` picker.
+- **Credentials are never shown.** A kubeconfig user stanza can carry
+  tokens / passwords / client keys. kbu flattens only non-secret metadata
+  and builds the YAML from an allowlist, so every credential-bearing field
+  renders as `<redacted>` — no secret can reach the panel or the YAML view.
+
 ## [v2.1.2] - 2026-08-04
 
 Fix the detail panel (panel 3) scrolling to a blank body.
