@@ -57,6 +57,35 @@ func fetchJobsForCronJobDrillDown(ctx context.Context, cs kubernetes.Interface, 
 
 func init() {
 	// -----------------------------------------------------------------------
+	// KubeConfig (order -1, top of sidebar) — local kubeconfig, NOT cluster
+	// data. Read-only: no edit / delete (switching context stays in the C
+	// picker). Room to grow to Clusters / Users later.
+	// -----------------------------------------------------------------------
+
+	// Contexts
+	DefaultRegistry.Register(&ResourceDefinition{
+		Type:            ResourceContexts,
+		DisplayName:     "Contexts",
+		KubectlName:     "context",
+		Category:        "KubeConfig",
+		CategoryOrder:   -1,
+		OrderInCategory: 0,
+		ClusterScoped:   true,
+		Columns: []Column{
+			{Title: "Name", MinWidth: 20},
+			{Title: "Cluster", MinWidth: 16},
+			{Title: "User", MinWidth: 16},
+			{Title: "Namespace", MinWidth: 12},
+			{Title: "Server", MinWidth: 24},
+		},
+		Fetcher: func(_ context.Context, _ kubernetes.Interface, _ string) ([]ResourceItem, error) {
+			return fetchContextItems()
+		},
+		Detailer:     detailContext,
+		WatchStarter: contextsPollWatch,
+	})
+
+	// -----------------------------------------------------------------------
 	// Cluster (order 0)
 	// -----------------------------------------------------------------------
 

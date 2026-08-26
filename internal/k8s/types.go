@@ -47,6 +47,13 @@ const (
 	// fetcher goes through `helm` CLI rather than client-go. Registered at
 	// runtime only when `helm` is found on PATH (see helm.go).
 	ResourceReleases ResourceType = "releases"
+
+	// ResourceContexts is a read-only view over the local kubeconfig's
+	// contexts — it is NOT a cluster object. Its fetcher reads the kubeconfig
+	// file rather than calling the API server, and it exposes no write ops
+	// (edit / delete are gated off; switching context stays in the C picker).
+	// Lives in its own "KubeConfig" sidebar category (see builtins.go).
+	ResourceContexts ResourceType = "contexts"
 )
 
 // String returns the human-readable name of the resource type.

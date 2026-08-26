@@ -606,8 +606,8 @@ func TestTableModel_RenderRow_NamespaceMiddleTruncates(t *testing.T) {
 func TestColumnsForResource(t *testing.T) {
 	allTypes := k8s.AllResourceTypes()
 
-	if len(allTypes) != 26 {
-		t.Fatalf("expected 26 resource types, got %d", len(allTypes))
+	if len(allTypes) != 27 {
+		t.Fatalf("expected 27 resource types, got %d", len(allTypes))
 	}
 
 	for _, rt := range allTypes {

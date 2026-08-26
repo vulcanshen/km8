@@ -448,6 +448,12 @@ func (m YamlPopupModel) Update(msg tea.Msg) (YamlPopupModel, tea.Cmd) {
 		if m.item.Name == "" {
 			return m, nil
 		}
+		// Honour the same kind-level edit gate as the table `E` — read-only
+		// kinds (Contexts, Events) must not reach kubectl edit even via the
+		// YAML popup.
+		if !resourceAllowsEdit(m.resource) {
+			return m, nil
+		}
 		closeCmd := m.animator.Close()
 		rt, item, ctx := m.resource, m.item, m.contextName
 		return m, tea.Batch(closeCmd, func() tea.Msg {

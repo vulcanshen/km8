@@ -138,7 +138,8 @@ func buildGenericRelativeEntries(detail k8s.ResourceDetail) []relativeEntry {
 // meaningful to surface. Such kinds drop the tab entirely (handled by
 // SetResourceType) instead of showing an empty pane.
 func relativesApplicable(rt k8s.ResourceType) bool {
-	return rt != k8s.ResourceNamespaces
+	// Contexts are a local kubeconfig view with no cluster relationships.
+	return rt != k8s.ResourceNamespaces && rt != k8s.ResourceContexts
 }
 
 // relativesPlaceholderEmpty is shown when the active resource has no refs to

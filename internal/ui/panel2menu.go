@@ -492,7 +492,9 @@ func panel2DrillLabel(rt k8s.ResourceType, item k8s.ResourceItem) string {
 // technically allowed but has no dev-workflow value. Currently only
 // Events — they're system-generated immutable records.
 func resourceAllowsEdit(rt k8s.ResourceType) bool {
-	return rt != k8s.ResourceEvents
+	// Contexts are a read-only kubeconfig view, not a cluster object —
+	// no editable surface.
+	return rt != k8s.ResourceEvents && rt != k8s.ResourceContexts
 }
 
 // resourceAllowsDelete returns false for kinds where `kubectl delete` is
@@ -511,7 +513,7 @@ func resourceAllowsEdit(rt k8s.ResourceType) bool {
 // past a generic "delete resource?" prompt when the target is a ns.
 func resourceAllowsDelete(rt k8s.ResourceType) bool {
 	switch rt {
-	case k8s.ResourceEvents, k8s.ResourceNodes:
+	case k8s.ResourceEvents, k8s.ResourceNodes, k8s.ResourceContexts:
 		return false
 	}
 	return true

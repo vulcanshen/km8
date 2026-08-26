@@ -2598,6 +2598,9 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, c)
 		}
 		rows := augmentRowsWithHelm(m.items, msg.Type)
+		if msg.Type == k8s.ResourceContexts {
+			markCurrentContextRow(rows, m.k8sClient.ContextName())
+		}
 		m.table.SetRows(rows)
 		m.syncCompareLockToTable()
 		m.honorPendingTableSelect(msg.Type, m.items)
@@ -4123,6 +4126,27 @@ func augmentRowsWithHelm(items []k8s.ResourceItem, rt k8s.ResourceType) [][]stri
 		rows[i] = out
 	}
 	return rows
+}
+
+// markCurrentContextRow appends a " *" marker to the Name cell of the row
+// whose context name matches the live client's active context. "Current" is
+// app runtime state — the C picker rebinds the client without writing the
+// kubeconfig, so the disk current-context can differ from what kbu is
+// actually connected to — hence this can't be derived in the registry
+// fetcher and is stamped here where the active context is known. For the
+// cluster-scoped Contexts resource, Name is column 0 (no leading Namespace
+// column). No-op when nothing matches. Marks after sort so the "*" never
+// affects row ordering.
+func markCurrentContextRow(rows [][]string, current string) {
+	if current == "" {
+		return
+	}
+	for i := range rows {
+		if len(rows[i]) > 0 && rows[i][0] == current {
+			rows[i][0] += " *"
+			return
+		}
+	}
 }
 
 // clearSearchOnLeave drops the search state of `from` when focus moves

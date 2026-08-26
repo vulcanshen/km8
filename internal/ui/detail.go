@@ -1089,6 +1089,10 @@ func (m *DetailModel) SetResourceType(rt k8s.ResourceType) {
 		// Helm releases aren't K8s objects themselves so kubectl-style
 		// events don't apply; History replaces Events as the second tab.
 		m.tabs = []string{"Relatives", "History"}
+	case rt == k8s.ResourceContexts:
+		// Read-only kubeconfig context: no cluster events / relatives.
+		// A single Info tab renders the flattened detail fields.
+		m.tabs = []string{"Info"}
 	case !relativesApplicable(rt):
 		m.tabs = []string{"Events"}
 	default:
@@ -1202,6 +1206,8 @@ func (m *DetailModel) buildContentLines() {
 		lines, _, cursorLine := renderRelativeEntries(m.relativeEntries, m.relativeCursor, m.width, m.theme, relativesPlaceholderEmpty, m.focused)
 		m.contentLines = lines
 		m.relativeCursorLine = cursorLine
+	case "Info":
+		m.contentLines = m.buildInfoLines()
 	case "Logs":
 		m.contentLines = m.buildLogLines()
 	case "Events":
@@ -1342,6 +1348,30 @@ func (m DetailModel) SelectedRelativeRef() *k8s.RefTarget {
 		return nil
 	}
 	return m.relativeEntries[m.relativeCursor].ref
+}
+
+// buildInfoLines renders ResourceDetail.Fields as an aligned key/value list.
+// Only the Contexts "Info" tab uses it (the read-only kubeconfig view). Labels
+// are right-padded to a common width so values line up; long values are left
+// to truncate at the panel edge (zoom the panel with z to see more).
+func (m DetailModel) buildInfoLines() []string {
+	if !m.hasData || len(m.detail.Fields) == 0 {
+		return []string{"  " + m.theme.DetailValueStyle().Render("(no detail)")}
+	}
+	labelW := 0
+	for _, f := range m.detail.Fields {
+		if w := lipgloss.Width(f.Label); w > labelW {
+			labelW = w
+		}
+	}
+	labelStyle := m.theme.DetailLabelStyle()
+	valueStyle := m.theme.DetailValueStyle()
+	lines := make([]string, 0, len(m.detail.Fields))
+	for _, f := range m.detail.Fields {
+		key := labelStyle.Render(fmt.Sprintf("%-*s", labelW+1, f.Label+":"))
+		lines = append(lines, "  "+key+" "+valueStyle.Render(f.Value))
+	}
+	return lines
 }
 
 func (m DetailModel) buildEventLines() []string {

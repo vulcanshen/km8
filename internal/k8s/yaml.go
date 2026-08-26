@@ -20,6 +20,11 @@ func MarshalItemYAML(item ResourceItem) string {
 	if item.Raw == nil {
 		return ""
 	}
+	// Contexts are not k8s objects — render a redacted, kubeconfig-shaped
+	// view (allowlist; credentials never included) instead of marshaling.
+	if ci, ok := item.Raw.(ContextInfo); ok {
+		return contextYAML(ci)
+	}
 	obj, ok := item.Raw.(runtime.Object)
 	if !ok {
 		return ""
