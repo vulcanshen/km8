@@ -50,11 +50,22 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ACTION_TOKEN: ${{ secrets.ACTION_TOKEN }}
       - name: Force release body from CHANGELOG (goreleaser's --release-notes is unreliable)
+        # Run even when goreleaser failed a LATER step (e.g. a Homebrew/Scoop tap
+        # push): goreleaser creates the release + uploads assets before those
+        # steps, so the release usually exists and just needs its body set — this
+        # is what stopped the notes going empty when a tap push 401'd. Guarded so
+        # an EARLY goreleaser failure (release not created yet) skips gracefully
+        # instead of turning into a second, confusing red.
+        if: always()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if [ -s RELEASE_NOTES.md ]; then
+          if [ ! -s RELEASE_NOTES.md ]; then
+            echo "RELEASE_NOTES.md is empty — skipping body override"
+            exit 0
+          fi
+          if gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
             gh release edit "${GITHUB_REF_NAME}" --notes-file RELEASE_NOTES.md
           else
-            echo "RELEASE_NOTES.md is empty — skipping body override"
+            echo "release ${GITHUB_REF_NAME} does not exist yet — skipping body override"
           fi
