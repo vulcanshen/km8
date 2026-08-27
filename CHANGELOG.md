@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [v2.2.1] - 2026-08-27
+
+Fix the Logs tab (panel 3) shattering the whole screen.
+
+- **Terminal control bytes in log output no longer break the UI.** A
+  container that emits ANSI escapes — colored console output (Spring Boot,
+  logback), progress redraws, cursor moves, screen/line erases — or bare
+  control characters (tabs in stack traces, backspace, form-feed) sent those
+  bytes straight to your terminal. They moved the real cursor outside panel
+  3 and painted over the sidebar, table, and borders, corrupting the entire
+  frame. Log text is now stripped of every escape and control byte the
+  moment it enters the buffer, and each rendered line is clamped to the panel
+  width so one over-long line can't push past its column. In-log color is
+  stripped as a consequence (kbu still colors its own per-container / per-pod
+  prefix) — matching how k9s and Lens render streaming logs.
+
 ## [v2.2.0] - 2026-08-26
 
 Browse your kubeconfig contexts from inside kbu — a new read-only view.

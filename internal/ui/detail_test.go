@@ -466,6 +466,30 @@ func TestDetailModel_AppendLogLine_AggregatePrefix(t *testing.T) {
 	}
 }
 
+// TestDetailModel_BuildLogLines_ClampsToWidth guarantees no rendered log
+// line ever exceeds the panel width — the failure mode where one over-wide
+// line shatters app.go's fixed-width panel composition. Exercises both the
+// textW floor (prefix wider than the panel) and the final ansi.Truncate
+// clamp, and confirms control bytes are gone by the time they hit the buffer.
+func TestDetailModel_BuildLogLines_ClampsToWidth(t *testing.T) {
+	m := newTestDetail() // panel width 80
+	m.SetResourceType(k8s.ResourceDeployments)
+	longCtr := strings.Repeat("c", 90) // prefix alone overruns the 80-col panel
+	m.AppendLogLine("pod-abc123-xyz45", longCtr, "\x1b[31m"+strings.Repeat("x", 40)+"\x1b[0m")
+	m = m.switchToTab(0) // Logs
+	if len(m.contentLines) == 0 {
+		t.Fatal("expected rendered log lines")
+	}
+	for i, l := range m.contentLines {
+		if w := lipgloss.Width(l); w > 80 {
+			t.Errorf("content line %d width %d exceeds panel width 80: %q", i, w, l)
+		}
+	}
+	if strings.ContainsAny(m.logLines[0].text, "\x1b\x08\x0c\x07\r") {
+		t.Errorf("sanitized log text retained control bytes: %q", m.logLines[0].text)
+	}
+}
+
 // ── Relatives tab + drill ─────────────────────────────────────────────────
 
 func samplePodRelativesDetail() k8s.ResourceDetail {
@@ -1146,8 +1170,22 @@ func TestSanitizeLogText(t *testing.T) {
 		{"multiple trailing crs keep preceding content", "downloading\r\r\r", "downloading"},
 		{"leading cr drops empty prefix", "\rreal content", "real content"},
 		{"only crs collapse to empty", "\r\r\r", ""},
-		{"ansi color escape preserved with cr", "\x1b[32mfoo\x1b[0m\r\x1b[32mbar\x1b[0m", "\x1b[32mbar\x1b[0m"},
-		{"crlf never appears here since scanner strips it", "a\nb", "a\nb"},
+		// ── control-byte stripping (Spring/tomcat log "explosion" fix) ──
+		// Any escape/control byte reaching the real terminal moves the
+		// cursor outside panel 3 and shatters the frame, so all of them
+		// are stripped at ingest. In-log color goes with them — kbu still
+		// colors its own per-container/pod prefix.
+		{"ansi color now stripped (was preserved)", "\x1b[32mfoo\x1b[0m\r\x1b[32mbar\x1b[0m", "bar"},
+		{"sgr color stripped", "\x1b[31mred\x1b[0m", "red"},
+		{"cursor move + erase-line stripped", "a\x1b[2Kb\x1b[Gc", "abc"},
+		{"erase-screen stripped", "before\x1b[2Jafter", "beforeafter"},
+		{"cursor-home stripped", "\x1b[Hx", "x"},
+		{"bare backspace stripped", "ab\x08c", "abc"},
+		{"form feed stripped", "x\x0cy", "xy"},
+		{"bell stripped", "ding\x07", "ding"},
+		{"stack-trace tab becomes space", "\tat org.foo.Bar", " at org.foo.Bar"},
+		{"unicode + box-drawing kept", "café │ 日本", "café │ 日本"},
+		{"stray newline stripped (scanner splits on \\n, so never happens)", "a\nb", "ab"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

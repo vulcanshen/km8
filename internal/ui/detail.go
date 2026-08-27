@@ -1728,22 +1728,41 @@ func (m DetailModel) SelectedHistoryRevision() *k8s.ReleaseRevision {
 // runs) are skipped so a `foo\r` line still renders `foo` instead
 // of "".
 //
-// ANSI color escapes (`\x1b[…m`) are untouched — they don't move
-// the cursor and the log renderer already accepts styled input.
-// ANSI cursor-move escapes (`\x1b[K`, `\x1b[G`, etc.) are rarer than
-// `\r` progress refreshes and are left for a follow-up if they show
-// up in practice; sanitizing them requires a real ANSI parser.
+// After the `\r` collapse the text is stripped of ALL terminal control
+// bytes before it enters the buffer. Container logs routinely carry more
+// than color: cursor moves (`\x1b[G`), line/screen erase (`\x1b[K`,
+// `\x1b[2J`), cursor-home, and bare C0 controls (backspace `\x08`,
+// form-feed `\x0c`, bell). wrapPlain slices by byte and the panel is
+// composed with a fixed width, so any escape that reaches the real
+// terminal moves the cursor OUTSIDE the panel or clears the screen — the
+// Logs tab then "explodes" over the whole frame. `ansi.Strip` removes
+// ESC-based escape sequences but, being an ANSI parser, KEEPS bare C0/C1
+// control chars (they are Execute actions), so a second pass drops those
+// too (tab → space to avoid width surprises). In-log color is stripped
+// as a consequence; kbu still colors its own per-container/pod prefix,
+// matching how k9s / Lens render streaming logs.
 func sanitizeLogText(s string) string {
-	if !strings.ContainsRune(s, '\r') {
-		return s
-	}
-	parts := strings.Split(s, "\r")
-	for i := len(parts) - 1; i >= 0; i-- {
-		if parts[i] != "" {
-			return parts[i]
+	if strings.ContainsRune(s, '\r') {
+		parts := strings.Split(s, "\r")
+		s = ""
+		for i := len(parts) - 1; i >= 0; i-- {
+			if parts[i] != "" {
+				s = parts[i]
+				break
+			}
 		}
 	}
-	return ""
+	s = ansi.Strip(s)
+	return strings.Map(func(r rune) rune {
+		switch {
+		case r == '\t':
+			return ' '
+		case r < 0x20, r >= 0x7f && r < 0xa0:
+			return -1
+		default:
+			return r
+		}
+	}, s)
 }
 
 func wrapPlain(text string, width int) []string {
@@ -1866,21 +1885,39 @@ func (m DetailModel) buildLogLines() []string {
 			plainPrefix = "  " + ll.container + " │ "
 			styledPrefix = "  " + ctrStyle.Render(ll.container) + " │ "
 		}
-		textW := m.width - len(plainPrefix)
+		// Budget the text column count off the prefix's VISUAL width, not
+		// its byte length (`│` is 3 bytes / 1 col; a stray negative budget
+		// from byte-counting sends wrapPlain down its width<=0 path, which
+		// returns the line UNWRAPPED — a second overflow route). Floor at 1
+		// so a prefix wider than the panel still wraps instead of emitting
+		// a full-length line.
+		prefixCols := lipgloss.Width(plainPrefix)
+		textW := m.width - prefixCols
+		if textW < 1 {
+			textW = 1
+		}
 		wrapped := wrapPlain(ll.text, textW)
 		if len(wrapped) == 0 {
 			wrapped = []string{""}
 		}
 		lines = append(lines, styledPrefix+wrapped[0])
 		if len(wrapped) > 1 {
-			// Visual-width math: prefix has 2 leading spaces + identifier(s) +
-			// " │ " (3 cols). Continuation needs same total visual width up
-			// to the rightmost " │ " so text columns align.
-			prefixCols := lipgloss.Width(plainPrefix)
+			// Continuation needs same total visual width up to the rightmost
+			// " │ " (3 cols) so text columns align under the first line.
 			contIndent := strings.Repeat(" ", prefixCols-3) + " │ "
 			for _, w := range wrapped[1:] {
 				lines = append(lines, contIndent+w)
 			}
+		}
+	}
+	// Final guard: no log line may exceed the panel width. wrapPlain keeps
+	// the text within budget, but an over-long prefix (or a wide char at the
+	// wrap boundary) can still push a line past m.width, and one over-width
+	// line shatters the fixed-width panel composition in app.go. ansi.Truncate
+	// is escape-aware, so it clamps without splitting the styled prefix.
+	for i, l := range lines {
+		if lipgloss.Width(l) > m.width {
+			lines[i] = ansi.Truncate(l, m.width, "")
 		}
 	}
 	return lines
