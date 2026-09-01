@@ -1,8 +1,8 @@
 # kbu — Implementation
 
-本文件是 [Vulcan's TUI Design Principle](https://github.com/vulcanshen/thoughts/blob/main/tui-design-principle.md) 在
-kbu 上的具體 implementation。通用規範是 **interface**、本文件是 **implementation
-class** — 每節對應通用規範同編號的條款、寫 kbu 的具體選擇、案例、hotkey 表。
+本文件是 [**VTP** — Vulcan's TUI Design Principle](https://github.com/vulcanshen/thoughts/blob/main/vtp.md) 在
+kbu 上的具體 implementation。VTP 是 **interface**、本文件是 **implementation
+class** — 每節對應 VTP 同編號的條款、寫 kbu 的具體選擇、案例、hotkey 表。
 
 新加入 kbu 開發的人讀這份文件、能直接知道「kbu 把每條原則 implement 成什
 麼樣」。想知道**為什麼**這樣做、回去看通用規範。
