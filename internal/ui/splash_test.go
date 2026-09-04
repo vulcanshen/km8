@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"strings"
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -127,6 +128,7 @@ func TestSplashModel_TickStopsWhenComplete(t *testing.T) {
 	m.identityVisible = true            // past identity hold
 	m.taglineVisible = true             // past tagline hold
 	m.versionVisible = true             // past version hold
+	m.creditVisible = true              // past credit hold
 	m.hintVisible = true                // past hint hold
 
 	_, cmd := m.Update(splashTickMsg{})
@@ -149,8 +151,8 @@ func TestSplashModel_CaptionRevealsAfterAnimation(t *testing.T) {
 		t.Error("identity must not be visible until splashIdentityMsg fires")
 	}
 
-	// splashIdentityMsg fires KubeUI + version + tagline together AND
-	// schedules the hint reveal.
+	// splashIdentityMsg fires KubeUI + version + tagline + credit together
+	// AND schedules the hint reveal.
 	m, cmd = m.Update(splashIdentityMsg{})
 	if !m.identityVisible {
 		t.Error("splashIdentityMsg must set identityVisible = true")
@@ -160,6 +162,9 @@ func TestSplashModel_CaptionRevealsAfterAnimation(t *testing.T) {
 	}
 	if !m.taglineVisible {
 		t.Error("splashIdentityMsg must set taglineVisible = true (fires together)")
+	}
+	if !m.creditVisible {
+		t.Error("splashIdentityMsg must set creditVisible = true (fires together)")
 	}
 	if cmd == nil {
 		t.Fatal("splashIdentityMsg must return the hint-reveal cmd")
@@ -172,6 +177,27 @@ func TestSplashModel_CaptionRevealsAfterAnimation(t *testing.T) {
 	m, _ = m.Update(splashHintMsg{})
 	if !m.hintVisible {
 		t.Error("splashHintMsg must set hintVisible = true")
+	}
+}
+
+// The developer credit ("developed by" + email) is hidden until the identity
+// beat fires, then rendered under the tagline — mirroring filu's splash.
+func TestSplashModel_CreditRendersAfterIdentity(t *testing.T) {
+	m := newTestSplash()
+	m.Show()
+	m.revealedCount = len(m.pixelOrder)
+
+	if strings.Contains(m.Render(120, 60), authorEmail) {
+		t.Error("author email must not render before the identity beat")
+	}
+
+	m, _ = m.Update(splashIdentityMsg{})
+	out := m.Render(120, 60)
+	if !strings.Contains(out, "developed by") {
+		t.Error(`rendered splash must contain "developed by" once credited`)
+	}
+	if !strings.Contains(out, authorEmail) {
+		t.Errorf("rendered splash must contain %q once credited", authorEmail)
 	}
 }
 

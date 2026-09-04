@@ -12,7 +12,7 @@ import (
 )
 
 type splashTickMsg struct{}
-type splashIdentityMsg struct{} // fires KubeUI + version + tagline together
+type splashIdentityMsg struct{} // fires KubeUI + version + tagline + credit together
 type splashHintMsg struct{}
 
 // SplashModel renders the kbu logo as a hidden easter egg.
@@ -27,6 +27,7 @@ type SplashModel struct {
 	identityVisible bool // "KubeUI" line
 	taglineVisible  bool // "A single-pane Kubernetes workspace"
 	versionVisible  bool
+	creditVisible   bool // "developed by" + author email
 	hintVisible     bool
 }
 
@@ -44,6 +45,7 @@ func (m *SplashModel) Show() tea.Cmd {
 	m.identityVisible = false
 	m.taglineVisible = false
 	m.versionVisible = false
+	m.creditVisible = false
 	m.hintVisible = false
 
 	// Reveal phases:
@@ -52,7 +54,7 @@ func (m *SplashModel) Show() tea.Cmd {
 	// (3) U frame (navy) - bottom-to-top, rising from the base, over the sheet.
 	// (4) beat - brief hold at the U->K/B boundary.
 	// (5) K/B letters (gold) - shuffled, painted over the sheet.
-	// (6) 400ms hold -> KubeUI + version + tagline appear together (all blue).
+	// (6) 400ms hold -> KubeUI + version + tagline + credit appear together.
 	// (7) 500ms hold -> esc hint appears.
 	rows, cols := len(logoPixels), len(logoPixels[0])
 	// Background pass covers EVERY cell so the dark-gray sheet fills solid;
@@ -124,6 +126,9 @@ const (
 	logoBg   = "#313244" // dark-gray background (catppuccin surface0)
 	logoNavy = "#205090" // U frame — side rails + base (icon.svg)
 	logoGold = "#f2b753" // K / B letters (icon.svg)
+
+	// authorEmail is credited under the tagline, above the Esc hint.
+	authorEmail = "vulcan.shen.2304@gmail.com"
 )
 
 func pixelGlyph(byte) string {
@@ -170,7 +175,8 @@ func (m SplashModel) Render(width, height int) string {
 	dimStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#7f849c"))
 	blueStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#89b4fa"))
 	logoW := cols * 2
-	identityText, taglineText, versionText, hintText := " ", " ", " ", " "
+	identityText, taglineText, versionText := " ", " ", " "
+	creditText, emailText, hintText := " ", " ", " "
 	if m.identityVisible {
 		identityText = blueStyle.Bold(true).Render("KubeUI")
 	}
@@ -179,6 +185,10 @@ func (m SplashModel) Render(width, height int) string {
 	}
 	if m.taglineVisible {
 		taglineText = blueStyle.Render("A single-pane kubernetes workspace")
+	}
+	if m.creditVisible {
+		creditText = dimStyle.Render("developed by")
+		emailText = dimStyle.Render(authorEmail)
 	}
 	if m.hintVisible {
 		hintText = dimStyle.Render("Press Esc to close")
@@ -189,6 +199,10 @@ func (m SplashModel) Render(width, height int) string {
 		lipgloss.PlaceHorizontal(logoW, lipgloss.Center, versionText) +
 		"\n" +
 		lipgloss.PlaceHorizontal(logoW, lipgloss.Center, taglineText) +
+		"\n\n" +
+		lipgloss.PlaceHorizontal(logoW, lipgloss.Center, creditText) +
+		"\n" +
+		lipgloss.PlaceHorizontal(logoW, lipgloss.Center, emailText) +
 		"\n\n" +
 		lipgloss.PlaceHorizontal(logoW, lipgloss.Center, hintText)
 
@@ -214,6 +228,7 @@ func (m SplashModel) Update(msg tea.Msg) (SplashModel, tea.Cmd) {
 			m.identityVisible = false
 			m.taglineVisible = false
 			m.versionVisible = false
+			m.creditVisible = false
 			m.hintVisible = false
 		}
 	case splashTickMsg:
@@ -267,6 +282,7 @@ func (m SplashModel) Update(msg tea.Msg) (SplashModel, tea.Cmd) {
 		m.identityVisible = true
 		m.versionVisible = true
 		m.taglineVisible = true
+		m.creditVisible = true
 		return m, tea.Tick(500*time.Millisecond, func(time.Time) tea.Msg {
 			return splashHintMsg{}
 		})
