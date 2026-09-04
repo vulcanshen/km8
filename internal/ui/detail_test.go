@@ -2101,4 +2101,3 @@ func TestDetailModel_Logs_NoDimOnUnfocus(t *testing.T) {
 		}
 	}
 }
-

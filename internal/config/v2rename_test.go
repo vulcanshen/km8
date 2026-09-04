@@ -76,10 +76,10 @@ func TestMigrateLegacyConfigDir_CopiesFilesAndSubdirs(t *testing.T) {
 		t.Fatal(err)
 	}
 	files := map[string]string{
-		"config.yaml":       "default_context: orbstack\n",
-		"state.yaml":        "kind: pods\n",
-		"theme.yaml":        "background: '#000'\n",
-		"logs/crash-1.log":  "panic: nope\n",
+		"config.yaml":      "default_context: orbstack\n",
+		"state.yaml":       "kind: pods\n",
+		"theme.yaml":       "background: '#000'\n",
+		"logs/crash-1.log": "panic: nope\n",
 	}
 	for rel, content := range files {
 		p := filepath.Join(oldDir, rel)

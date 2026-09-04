@@ -809,4 +809,3 @@ func (m CompareYamlPopupModel) renderBody(width, height int) string {
 	}
 	return strings.Join(rows, "\n")
 }
-

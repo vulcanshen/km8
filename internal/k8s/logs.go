@@ -337,4 +337,3 @@ func ContainerNames(raw interface{}) []string {
 	}
 	return names
 }
-

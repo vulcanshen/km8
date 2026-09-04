@@ -30,8 +30,8 @@ const (
 // AppModel can call detail.JumpToDrillLevel — popping intermediate
 // frames in one step.
 type BreadcrumbPopupModel struct {
-	animator PopupAnimator
-	chain    []k8s.RefTarget
+	animator    PopupAnimator
+	chain       []k8s.RefTarget
 	cursor      int
 	screenW     int
 	theme       *theme.Theme

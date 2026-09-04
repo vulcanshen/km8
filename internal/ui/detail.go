@@ -133,9 +133,9 @@ func (m DetailModel) YAMLContent() string { return m.detail.YAML }
 // active. SetResourceType refines the tab list (and reorders for Pod/Deploy).
 func NewDetailModel(t *theme.Theme) DetailModel {
 	return DetailModel{
-		activeTab:      DetailTabInfo,
-		tabs:           []string{"Relatives", "Events"},
-		theme:          t,
+		activeTab:        DetailTabInfo,
+		tabs:             []string{"Relatives", "Events"},
+		theme:            t,
 		maxLogLines:      1000,
 		followTail:       true,
 		followEventsTail: true,

@@ -316,14 +316,14 @@ func (m Panel2MenuPopupModel) RenderPopup() string {
 //  3. resourceHasContainer — Shell only on kinds with containers (Pod).
 //
 // Layout (top → bottom):
-//   1. Row-targeted hotkey actions: Y / E / S / D / C in that order
-//   2. Row-targeted navigation: Enter (drill into cursor item's
-//      children) — last entry of the row-level group because it's
-//      a navigation gesture rather than a kubectl-style verb, and
-//      the user already has Enter on the row directly
-//   3. Separator (rendered as a purple horizontal rule)
-//   4. Panel-level entries: Order — operates on the list view, not
-//      the row, so visually demarcated by the separator above
+//  1. Row-targeted hotkey actions: Y / E / S / D / C in that order
+//  2. Row-targeted navigation: Enter (drill into cursor item's
+//     children) — last entry of the row-level group because it's
+//     a navigation gesture rather than a kubectl-style verb, and
+//     the user already has Enter on the row directly
+//  3. Separator (rendered as a purple horizontal rule)
+//  4. Panel-level entries: Order — operates on the list view, not
+//     the row, so visually demarcated by the separator above
 //
 // Exit compare mode is NOT a menu entry — Esc is the single canonical
 // gesture for "back out of compare", and a hint in panel 2's
