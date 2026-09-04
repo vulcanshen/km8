@@ -1062,7 +1062,7 @@ focus 用**兩個同時的訊號**表達，讀者掃一眼即知焦點在哪：
 | `N` | namespace picker | `[N]amespace: <name>` chip |
 | `C` | context picker（panel 1/3 上） | `[C]ontext: <name>` chip |
 | `Alt-t` | Alterm toggle | `[Alt-t]erm` chip |
-| `q` | quit confirm | bottom statusline |
+| `q` | quit | bottom statusline |
 | `:` | command palette（future） | bottom statusline |
 
 ### Vim-style navigation（跨 surface 同義）

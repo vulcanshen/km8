@@ -13,7 +13,6 @@ type ConfirmAction int
 const (
 	ConfirmShellExec ConfirmAction = iota
 	ConfirmDelete
-	ConfirmQuit
 	ConfirmEdit
 	ConfirmSwitch
 	ConfirmRollback
@@ -101,7 +100,7 @@ func (m ConfirmModel) Update(msg tea.Msg) (ConfirmModel, tea.Cmd) {
 // HandleMouse routes a click against the confirm dialog.
 // Right-click inside the popup cancels (mirror of Esc / n / Space).
 // Left-click intentionally does NOT confirm — accidental click
-// could fire a destructive delete / quit / rollback, so the user
+// could fire a destructive delete / edit / rollback, so the user
 // must commit deliberately via keyboard Enter / y. Outside-popup
 // clicks are no-ops.
 func (m ConfirmModel) HandleMouse(msg tea.MouseMsg, screenW, screenH int) (ConfirmModel, tea.Cmd) {

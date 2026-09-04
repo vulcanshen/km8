@@ -2,9 +2,9 @@ package ui
 
 import "github.com/vulcanshen/kbu/internal/k8s"
 
-// quitConfirmedMsg is emitted by the quit confirm dialog when the user
-// confirms exit. AppModel handles it by stopping streams and calling tea.Quit.
-type quitConfirmedMsg struct{}
+// quitMsg is emitted when the user presses `q`. AppModel handles it by
+// stopping streams, killing PTYs, saving session state, then tea.Quit.
+type quitMsg struct{}
 
 // startEditMsg is emitted by the edit confirm dialog when the user confirms
 // editing a resource. AppModel handles it by launching kubectl edit in PTY.

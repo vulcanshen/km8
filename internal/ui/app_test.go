@@ -342,10 +342,10 @@ func appWithItems(items []k8s.ResourceItem, cursor int) AppModel {
 	d := NewDetailModel(th)
 	d.SetResourceType(k8s.ResourcePods)
 	return AppModel{
-		items:           items,
-		table:           tbl,
-		detail:          d,
-		theme:           th,
+		items:  items,
+		table:  tbl,
+		detail: d,
+		theme:  th,
 		// cfg is non-nil to match production NewAppModel — every other
 		// m.cfg reader in app.go nil-guards, but the ctrl+t handler
 		// (line ~1539) reads m.cfg.AltermShell/AltermLoginShell raw.
@@ -1362,4 +1362,26 @@ func TestAppModel_EscOnPanel2WithCompareMode_NoDrill_JustClearsLock(t *testing.T
 	if got.inCompareMode() {
 		t.Error("Esc must release compare lock")
 	}
+}
+
+// `q` quits immediately — there is no confirm step. The teardown lives in the
+// quitMsg handler, so the key handler's only job is emitting that msg.
+func TestAppModel_QuitKeySkipsConfirm(t *testing.T) {
+	m := appWithItems(nil, 0)
+
+	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'q'}})
+	if got := updated.(AppModel); got.confirm.IsActive() {
+		t.Error("q must not open a confirm popup")
+	}
+	if cmd == nil {
+		t.Fatal("q must return a quit cmd")
+	}
+	if msg := cmd(); !isQuitMsg(msg) {
+		t.Errorf("q must emit quitMsg, got %T", msg)
+	}
+}
+
+func isQuitMsg(msg tea.Msg) bool {
+	_, ok := msg.(quitMsg)
+	return ok
 }

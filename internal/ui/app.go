@@ -137,13 +137,13 @@ type AppModel struct {
 	// instead of one per tick. Cleared on row change so a new row
 	// gets an immediate fresh attempt.
 	nextAggregateRetry time.Time
-	detailExpanded  bool
-	tableExpanded   bool
-	switchSeq       int
+	detailExpanded     bool
+	tableExpanded      bool
+	switchSeq          int
 	// rowSeq is bumped by RowSelectedMsg and every nav handler that
 	// resets nextAggregateRetry, so any in-flight rowSwitchTickMsg from
 	// before the nav drops on receipt (seq comparison). See rowSwitchTickMsg.
-	rowSeq          int
+	rowSeq int
 
 	// Drill-down state
 	drillDownStack      []drillDownEntry
@@ -1362,32 +1362,32 @@ func NewAppModel(t *theme.Theme, client *k8s.Client, cfg *config.Config, state *
 	detail.SetFocused(initialPanel == DetailPanel)
 
 	return AppModel{
-		sidebar:         sidebar,
-		table:           table,
-		detail:          detail,
-		statusBar:       statusBar,
-		statusLine:      NewStatusLineModel(t),
-		namespacePicker: NewNamespacePickerModel(t),
-		contextPicker:   NewContextPickerModel(t),
-		help:            NewHelpModel(t),
-		appLog:          appLog,
-		confirm:         NewConfirmModel(t),
-		splash:          NewSplashModel(),
-		toast:           NewToastModel(t),
-		shellPty:        NewPtyView("ptyview_shell"),
-		txPty:           NewPtyView("ptyview_tx"),
-		yamlPopup:       NewYamlPopupModel(t),
-		comparePopup:    newCompareModel,
-		breadcrumbPopup: NewBreadcrumbPopupModel(t),
-		helmDocMenu:     NewHelmDocMenuPopupModel(t),
-		panel2Menu:      NewPanel2MenuPopupModel(t),
-		hintPopup:       NewHintPopupModel(t),
-		listPicker:      NewListPickerModel(t),
-		settingsPopup:   NewSettingsPopupModel(t),
-		activePanel:     initialPanel,
-		theme:           t,
-		cfg:             cfg,
-		cfgEditor:       cfg.Editor,
+		sidebar:            sidebar,
+		table:              table,
+		detail:             detail,
+		statusBar:          statusBar,
+		statusLine:         NewStatusLineModel(t),
+		namespacePicker:    NewNamespacePickerModel(t),
+		contextPicker:      NewContextPickerModel(t),
+		help:               NewHelpModel(t),
+		appLog:             appLog,
+		confirm:            NewConfirmModel(t),
+		splash:             NewSplashModel(),
+		toast:              NewToastModel(t),
+		shellPty:           NewPtyView("ptyview_shell"),
+		txPty:              NewPtyView("ptyview_tx"),
+		yamlPopup:          NewYamlPopupModel(t),
+		comparePopup:       newCompareModel,
+		breadcrumbPopup:    NewBreadcrumbPopupModel(t),
+		helmDocMenu:        NewHelmDocMenuPopupModel(t),
+		panel2Menu:         NewPanel2MenuPopupModel(t),
+		hintPopup:          NewHintPopupModel(t),
+		listPicker:         NewListPickerModel(t),
+		settingsPopup:      NewSettingsPopupModel(t),
+		activePanel:        initialPanel,
+		theme:              t,
+		cfg:                cfg,
+		cfgEditor:          cfg.Editor,
 		k8sClient:          client,
 		watcher:            watcher,
 		logStreamer:        logStreamer,
@@ -1433,7 +1433,7 @@ func discoverCRDs(client *k8s.Client) tea.Cmd {
 func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
-	if _, ok := msg.(quitConfirmedMsg); ok {
+	if _, ok := msg.(quitMsg); ok {
 		m.watcher.Stop()
 		m.logStreamer.Stop()
 		// Kill any persistent PTY (hidden Alterm shell, mid-edit, mid-exec)
@@ -1930,11 +1930,12 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.logStreamer.Stop()
 			return m, tea.Quit
 		case "q":
-			quitCmd := func() tea.Msg {
-				return quitConfirmedMsg{}
+			// `q` quits straight away — no confirm step. Routed
+			// through quitMsg so the teardown (streams, PTYs,
+			// session-state save) stays in one place.
+			return m, func() tea.Msg {
+				return quitMsg{}
 			}
-			m.confirm.SetLayer(m.popupDepth() + 1)
-			return m, m.confirm.Show(ConfirmQuit, "Quit kbu?", "", quitCmd)
 		case "V":
 			return m, m.splash.Show()
 		case ">":
@@ -4116,7 +4117,7 @@ func augmentRowsWithHelm(items []k8s.ResourceItem, rt k8s.ResourceType) [][]stri
 			out = append(out, item.Namespace) // Namespace leads
 		}
 		out = append(out, item.Row[0])        // Name
-		out = append(out, k8s.MarkHelm(item))  // helm marker
+		out = append(out, k8s.MarkHelm(item)) // helm marker
 		for j := 1; j < len(item.Row); j++ {
 			if j == skipIdx {
 				continue // resource's own namespace cell, hoisted to the front
