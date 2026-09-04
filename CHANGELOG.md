@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [v2.2.2] - 2026-09-04
+
+Quit without the extra keystroke; the splash credits its developer.
+
+- **`q` quits immediately.** The confirm dialog is gone — `q` exits on the
+  spot. Everything that used to happen behind the confirmation still
+  happens: watchers and log streams stop, a live Alterm / edit / exec PTY
+  is killed rather than orphaned, and the session snapshot (context,
+  namespace, kind, cursor, focused panel, active tab) is written before the
+  process exits, so the next launch resumes where you left off. `Ctrl+C`
+  still quits from anywhere, including while a panel search is active.
+- **The splash screen (`V`) credits its developer.** "developed by" and the
+  author's email fade in under the tagline, on the same beat as the name,
+  version, and tagline.
+
 ## [v2.2.1] - 2026-08-27
 
 Fix the Logs tab (panel 3) shattering the whole screen.
